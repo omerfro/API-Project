@@ -1,39 +1,34 @@
 import express from 'express';
 import log from '@ajar/marker';
 import morgan       from 'morgan';
+import cors from 'cors';
 
-import apiRoute from './routers/users.router.mjs';
+import {connect_db} from './db/mongoose_connection.mjs'
+import user_router from './modules/user/users.router.mjs';
 
-const { PORT, HOST } = process.env;
+import {error_handler,error_handler2,not_found} from './middleware/errors.handler.mjs'
 
+const { PORT = 8080, HOST = 'localhost', DB_URI } = process.env;
 
-//midlleware usage
 const app = express();
 
+//midlleware usage
+app.use(cors())
 app.use(morgan('dev'))
 
-app.use('/users',apiRoute);
+//routing
+app.use("/api/users",user_router);
 
+//error handling
+app.use(error_handler)
+app.use(error_handler2)
 
-//middleware functions
+app.use('*',not_found)
 
-const errorHandle = `<h1>Page not found!!</h1>
-        <p>It could be for some reasons:</p>
-        <ul>
-            <li>page not wrote</li>
-            <li>lazy developers</li>
-            <li>some bullshits</li>  
-        </ul>`
-
-app.use('*',(req,res) => {
-    res.status(404).send(errorHandle)
-})
-
-app.use((err,req,res,next) => {
-    console.log('error handler', err.message);
-    res.status(500).json({status:err.message});
-})
-
-app.listen(PORT, HOST,  ()=> {
+//start the express api server
+;(async ()=> {
+    await connect_db(DB_URI);
+    await app.listen(PORT,HOST);
     log.magenta(`🌎  listening on`,`http://${HOST}:${PORT}`);
-});
+})().catch(console.log)
+
